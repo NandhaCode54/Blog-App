@@ -1,21 +1,26 @@
-// PostController.java
 package com.example.blog.controller;
 
+import com.example.blog.dto.PageResponse;
+import com.example.blog.dto.PostRequest;
 import com.example.blog.dto.PostResponse;
-import com.example.blog.entity.Post;
-import com.example.blog.repository.PostRepository;
-import com.example.blog.repository.UserRepository;
+import com.example.blog.security.UserPrincipal;
 import com.example.blog.service.PostService;
-import com.example.blog.util.JwtUtil;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/posts")
-@CrossOrigin(origins = "http://localhost:5173")   // <‑‑ adjust if your front‑end runs elsewhere
+@Tag(name = "Posts", description = "Create, read, update and delete blog posts")
 public class PostController {
+
+    private static final int MAX_PAGE_SIZE = 50;
 
     private final PostService posts;
 
@@ -23,28 +28,69 @@ public class PostController {
         this.posts = posts;
     }
 
-
-    /** List all posts (public) */
+    @Operation(summary = "List published posts (paged, searchable, filterable)")
     @GetMapping
-    public List<PostResponse> all() {
-        return posts.list();
+    public PageResponse<PostResponse> all(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) Long category,
+            @RequestParam(required = false) String tag,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt,desc") String sort) {
+
+        int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
+        Sort sortSpec = parseSort(sort);
+        return posts.list(q, category, tag, PageRequest.of(Math.max(page, 0), safeSize, sortSpec));
     }
 
-    /** Create a post (requires JWT in Authorization header) */
+    @Operation(summary = "Get a single post by id (public)")
+    @GetMapping("/{id}")
+    public PostResponse one(@PathVariable Long id) {
+        return posts.getById(id);
+    }
+
+    @Operation(summary = "Get a single post by slug (public)")
+    @GetMapping("/slug/{slug}")
+    public PostResponse bySlug(@PathVariable String slug) {
+        return posts.getBySlug(slug);
+    }
+
+    @Operation(summary = "Create a post (authenticated)")
+    @SecurityRequirement(name = "bearerAuth")
     @PostMapping
-    public ResponseEntity<Post> create(@RequestBody Post post,
-                                       @RequestHeader("Authorization") String authHeader) {
+    public ResponseEntity<PostResponse> create(@Valid @RequestBody PostRequest req,
+                                               @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(posts.create(req, principal.id()));
+    }
 
-        // Expect header exactly:  Authorization: Bearer <jwt>
-        String token = (authHeader != null && authHeader.startsWith("Bearer "))
-                ? authHeader.substring(7)
-                : null;
+    @Operation(summary = "Update a post (owner or admin)")
+    @SecurityRequirement(name = "bearerAuth")
+    @PutMapping("/{id}")
+    public PostResponse update(@PathVariable Long id,
+                               @Valid @RequestBody PostRequest req,
+                               @AuthenticationPrincipal UserPrincipal principal) {
+        return posts.update(id, req, principal);
+    }
 
-        if (token == null) {
-            return ResponseEntity.status(401).build();
+    @Operation(summary = "Delete a post (owner or admin)")
+    @SecurityRequirement(name = "bearerAuth")
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id,
+                                       @AuthenticationPrincipal UserPrincipal principal) {
+        posts.delete(id, principal);
+        return ResponseEntity.noContent().build();
+    }
+
+    /** Parse "field,dir" (e.g. "createdAt,desc"); falls back to newest-first. */
+    private Sort parseSort(String sort) {
+        String[] parts = sort.split(",");
+        String field = parts.length > 0 && !parts[0].isBlank() ? parts[0].trim() : "createdAt";
+        Sort.Direction dir = (parts.length > 1 && parts[1].trim().equalsIgnoreCase("asc"))
+                ? Sort.Direction.ASC : Sort.Direction.DESC;
+        // whitelist sortable fields to avoid arbitrary property injection
+        if (!field.equals("createdAt") && !field.equals("title") && !field.equals("readingTime")) {
+            field = "createdAt";
         }
-
-        Post saved = posts.create(post, token);
-        return ResponseEntity.ok(saved);
+        return Sort.by(dir, field);
     }
 }

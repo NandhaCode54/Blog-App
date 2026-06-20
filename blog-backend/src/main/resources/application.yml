@@ -1,12 +1,9 @@
 spring:
   datasource:
-    url: jdbc:mysql://localhost:3306/blog
-    username: root
-    password: 1234
+    url: ${DB_URL:jdbc:mysql://localhost:3306/blog}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:1234}
     driver-class-name: com.mysql.cj.jdbc.Driver
-
-  autoconfigure:
-    exclude: org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration
 
   jpa:
     hibernate:
@@ -17,6 +14,16 @@ spring:
     enabled: true
     locations: classpath:db/migration
 
-# ? 256?bit (32?char+) secret used for both signing & parsing JWTs
+# 256-bit (32-char+) secret used for signing & parsing JWTs.
+# Override in every real environment via the JWT_SECRET env var.
 jwt:
-  secret: my_super_secret_key_for_jwt_1234567890
+  secret: ${JWT_SECRET:my_super_secret_key_for_jwt_1234567890}
+  # Access token lifetime in milliseconds (default 15 minutes)
+  access-expiration-ms: ${JWT_ACCESS_EXPIRATION_MS:900000}
+  # Refresh token lifetime in milliseconds (default 7 days)
+  refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION_MS:604800000}
+
+# Allowed CORS origins (comma-separated)
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
