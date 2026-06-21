@@ -4,10 +4,12 @@ import com.example.blog.dto.PageResponse;
 import com.example.blog.dto.admin.*;
 import com.example.blog.security.UserPrincipal;
 import com.example.blog.service.AdminUserService;
+import com.example.blog.service.AuthorService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
@@ -16,6 +18,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/admin")
@@ -25,9 +28,11 @@ import java.util.List;
 public class AdminUserController {
 
     private final AdminUserService adminService;
+    private final AuthorService authorService;
 
-    public AdminUserController(AdminUserService adminService) {
+    public AdminUserController(AdminUserService adminService, AuthorService authorService) {
         this.adminService = adminService;
+        this.authorService = authorService;
     }
 
     // -----------------------------------------------------------------------
@@ -57,7 +62,7 @@ public class AdminUserController {
                 role, status, search,
                 PageRequest.of(page, size, Sort.by("createdAt").descending()));
 
-        return PageResponse.from(result, r -> r);
+        return PageResponse.<AdminUserResponse, AdminUserResponse>from(result, r -> r);
     }
 
     @Operation(summary = "Get user detail")
@@ -133,5 +138,34 @@ public class AdminUserController {
             @PathVariable Long id,
             @AuthenticationPrincipal UserPrincipal admin) {
         return adminService.updateRole(id, new UpdateRoleRequest("AUTHOR"), admin);
+    }
+
+    // -----------------------------------------------------------------------
+    // Author upgrade requests
+    // -----------------------------------------------------------------------
+
+    @Operation(summary = "List pending author upgrade requests")
+    @GetMapping("/upgrade-requests")
+    public List<UpgradeRequestResponse> listUpgradeRequests() {
+        return authorService.listPendingRequests();
+    }
+
+    @Operation(summary = "Approve an upgrade request")
+    @PutMapping("/upgrade-requests/{id}/approve")
+    public ResponseEntity<Map<String, String>> approveUpgrade(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserPrincipal admin) {
+        authorService.approveRequest(id, admin);
+        return ResponseEntity.ok(Map.of("message", "Request approved"));
+    }
+
+    @Operation(summary = "Reject an upgrade request")
+    @PutMapping("/upgrade-requests/{id}/reject")
+    public ResponseEntity<Map<String, String>> rejectUpgrade(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> body,
+            @AuthenticationPrincipal UserPrincipal admin) {
+        authorService.rejectRequest(id, body.getOrDefault("reason", ""), admin);
+        return ResponseEntity.ok(Map.of("message", "Request rejected"));
     }
 }

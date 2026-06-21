@@ -2,120 +2,161 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import api, { apiErrorMessage } from "../api";
 import { useAuth } from "../context/AuthContext";
 import type { AuthResponse } from "../types";
+import BlogLogo from "../components/BlogLogo";
 
 const schema = z.object({
-  name: z.string().optional(),
   email: z.string().min(1, "Email is required").email("Enter a valid email"),
   password: z.string().min(1, "Password is required"),
 });
 
 type FormValues = z.infer<typeof schema>;
 
+function EyeIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
+function EyeOffIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+      <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+      <path d="M10.73 10.73a3 3 0 0 0 4.24 4.24" />
+      <path d="M1 1l22 22" />
+    </svg>
+  );
+}
+
 export default function LoginPage() {
-  const [mode, setMode] = useState<"login" | "register">("login");
-  const isRegister = mode === "register";
+  const [showPassword, setShowPassword] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
   const {
     register,
     handleSubmit,
-    setError,
-    reset,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({ resolver: zodResolver(schema) });
 
-  const switchMode = (next: "login" | "register") => {
-    setMode(next);
-    reset();
-  };
-
   const onSubmit = async (values: FormValues) => {
-    if (isRegister) {
-      if (!values.name || values.name.trim().length === 0) {
-        setError("name", { message: "Name is required" });
-        return;
-      }
-      if (values.password.length < 8) {
-        setError("password", { message: "Password must be at least 8 characters" });
-        return;
-      }
-    }
     try {
-      const url = isRegister ? "/auth/register" : "/auth/login";
-      const payload = isRegister
-        ? { name: values.name, email: values.email, password: values.password }
-        : { email: values.email, password: values.password };
-      const { data } = await api.post<AuthResponse>(url, payload);
+      const { data } = await api.post<AuthResponse>("/auth/login", {
+        email: values.email,
+        password: values.password,
+      });
       login(data);
-      toast.success(isRegister ? "Welcome aboard!" : "Welcome back!");
+      toast.success("Welcome back!");
       navigate("/");
     } catch (e) {
-      toast.error(apiErrorMessage(e, isRegister ? "Registration failed" : "Login failed"));
+      toast.error(apiErrorMessage(e, "Login failed"));
     }
   };
 
   return (
-    <div className="container py-5" style={{ maxWidth: 420 }}>
-      <div className="card shadow-sm">
-        <div className="card-body p-4">
-          <h2 className="h4 mb-3 text-center">{isRegister ? "Create account" : "Welcome back"}</h2>
-
-          <div className="btn-group w-100 mb-4" role="group">
-            <button
-              type="button"
-              className={`btn ${!isRegister ? "btn-primary" : "btn-outline-primary"}`}
-              onClick={() => switchMode("login")}
-            >
-              Login
-            </button>
-            <button
-              type="button"
-              className={`btn ${isRegister ? "btn-primary" : "btn-outline-primary"}`}
-              onClick={() => switchMode("register")}
-            >
-              Register
-            </button>
+    <div className="auth-page">
+      <div className="auth-card card">
+        {/* Gradient Header */}
+        <div className="auth-card-header">
+          <div className="mb-2">
+            <BlogLogo size={30} />
           </div>
+          <h1 className="h5 fw-bold mb-1 text-white">Welcome back</h1>
+          <p className="mb-0 text-white-50 small">Sign in to continue your journey</p>
+        </div>
 
+        {/* Form Body */}
+        <div className="auth-card-body card-body">
           <form onSubmit={handleSubmit(onSubmit)} noValidate>
-            {isRegister && (
-              <div className="mb-3">
-                <label className="form-label">User Name</label>
-                <input className={`form-control ${errors.name ? "is-invalid" : ""}`} {...register("name")} />
-                {errors.name && <div className="invalid-feedback">{errors.name.message}</div>}
-              </div>
-            )}
+            {/* Email */}
             <div className="mb-3">
-              <label className="form-label">Email</label>
+              <label className="form-label fw-medium">Email address</label>
               <input
                 type="email"
+                autoComplete="email"
+                placeholder="you@example.com"
                 className={`form-control ${errors.email ? "is-invalid" : ""}`}
                 {...register("email")}
               />
-              {errors.email && <div className="invalid-feedback">{errors.email.message}</div>}
-            </div>
-            <div className="mb-4">
-              <label className="form-label">Password</label>
-              <input
-                type="password"
-                className={`form-control ${errors.password ? "is-invalid" : ""}`}
-                {...register("password")}
-              />
-              {errors.password && <div className="invalid-feedback">{errors.password.message}</div>}
-              {isRegister && !errors.password && (
-                <div className="form-text">At least 8 characters.</div>
+              {errors.email && (
+                <div className="invalid-feedback">{errors.email.message}</div>
               )}
             </div>
-            <button className="btn btn-primary w-100" disabled={isSubmitting}>
-              {isSubmitting ? "Please wait…" : isRegister ? "Create account" : "Login"}
+
+            {/* Password */}
+            <div className="mb-3">
+              <div className="d-flex justify-content-between align-items-center mb-1">
+                <label className="form-label fw-medium mb-0">Password</label>
+                <Link
+                  to="/forgot-password"
+                  className="small text-decoration-none"
+                  style={{ color: "#6366f1" }}
+                >
+                  Forgot password?
+                </Link>
+              </div>
+              <div className="position-relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  placeholder="Your password"
+                  className={`form-control pe-5 ${errors.password ? "is-invalid" : ""}`}
+                  {...register("password")}
+                />
+                <button
+                  type="button"
+                  className="btn-pwd-toggle position-absolute top-50 end-0 translate-middle-y me-2"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+                </button>
+                {errors.password && (
+                  <div className="invalid-feedback">{errors.password.message}</div>
+                )}
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <div className="form-check">
+                <input
+                  className="form-check-input"
+                  type="checkbox"
+                  id="rememberMe"
+                />
+                <label className="form-check-label small text-secondary" htmlFor="rememberMe">
+                  Remember me
+                </label>
+              </div>
+            </div>
+
+            <button type="submit" className="btn btn-auth w-100" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true" />
+                  Signing in…
+                </>
+              ) : (
+                "Sign in"
+              )}
             </button>
           </form>
+
+          <div className="auth-divider">
+            <span>New to BlogHub?</span>
+          </div>
+
+          <Link to="/register" className="btn btn-outline-secondary w-100">
+            Create an account
+          </Link>
         </div>
       </div>
     </div>

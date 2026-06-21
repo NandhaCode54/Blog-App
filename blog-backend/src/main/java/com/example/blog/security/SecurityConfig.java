@@ -47,7 +47,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET,
                         "/posts", "/posts/**",
                         "/categories", "/categories/**",
-                        "/tags", "/tags/**"
+                        "/tags", "/tags/**",
+                        "/authors", "/authors/**"
                 ).permitAll()
                 .requestMatchers(
                         "/v3/api-docs/**",

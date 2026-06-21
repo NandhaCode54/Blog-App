@@ -88,3 +88,30 @@ export async function upsertAuthorProfile(id: number, input: AuthorProfileInput)
   const { data } = await api.put<AuthorProfile>(`/admin/authors/${id}/profile`, input);
   return data;
 }
+
+// ---- Upgrade requests ----
+
+export interface UpgradeRequest {
+  id: number;
+  userId: number;
+  userName: string;
+  userEmail: string;
+  message: string | null;
+  status: string;
+  rejectReason: string | null;
+  createdAt: string;
+  reviewedAt: string | null;
+}
+
+export async function fetchUpgradeRequests(): Promise<UpgradeRequest[]> {
+  const { data } = await api.get<UpgradeRequest[]>("/admin/upgrade-requests");
+  return data;
+}
+
+export async function approveUpgradeRequest(id: number): Promise<void> {
+  await api.put(`/admin/upgrade-requests/${id}/approve`);
+}
+
+export async function rejectUpgradeRequest(id: number, reason: string): Promise<void> {
+  await api.put(`/admin/upgrade-requests/${id}/reject`, { reason });
+}

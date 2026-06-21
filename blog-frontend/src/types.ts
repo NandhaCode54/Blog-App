@@ -73,6 +73,28 @@ export interface ApiError {
   fieldErrors?: Record<string, string> | null;
 }
 
+// ---- Public author types ----
+
+export interface PublicAuthor {
+  id: number;
+  name: string;
+  email: string;
+  bio: string | null;
+  avatarUrl: string | null;
+  website: string | null;
+  twitter: string | null;
+  linkedin: string | null;
+  postCount: number;
+}
+
+export interface AuthorDashboardStats {
+  publishedPosts: number;
+  draftPosts: number;
+  totalComments: number;
+}
+
+export type UpgradeRequestStatus = "NONE" | "PENDING" | "APPROVED" | "REJECTED";
+
 // ---- Admin types ----
 
 export type UserStatus = "ACTIVE" | "SUSPENDED" | "BANNED";

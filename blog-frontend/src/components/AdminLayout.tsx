@@ -7,6 +7,7 @@ const navItems = [
   { to: "/admin", label: "Dashboard", icon: "bi-speedometer2", end: true },
   { to: "/admin/users", label: "Users", icon: "bi-people" },
   { to: "/admin/authors", label: "Authors", icon: "bi-pen" },
+  { to: "/admin/upgrade-requests", label: "Upgrade Requests", icon: "bi-person-check" },
   { to: "/admin/categories", label: "Categories", icon: "bi-tag" },
 ];
 

@@ -75,3 +75,11 @@ export async function createComment(postId: number, content: string): Promise<Co
 export async function deleteComment(commentId: number): Promise<void> {
   await api.delete(`/comments/${commentId}`);
 }
+
+export async function forgotPassword(email: string): Promise<void> {
+  await api.post("/auth/forgot-password", { email });
+}
+
+export async function resetPassword(token: string, newPassword: string): Promise<void> {
+  await api.post("/auth/reset-password", { token, newPassword });
+}
