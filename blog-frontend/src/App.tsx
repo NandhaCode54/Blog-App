@@ -16,6 +16,7 @@ import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
 import AdminUsersPage from "./pages/admin/AdminUsersPage";
 import AdminAuthorsPage from "./pages/admin/AdminAuthorsPage";
 import AdminUpgradeRequestsPage from "./pages/admin/AdminUpgradeRequestsPage";
+import AdminSettingsPage from "./pages/admin/AdminSettingsPage";
 import { useAuth } from "./context/AuthContext";
 
 export default function App() {
@@ -54,6 +55,7 @@ export default function App() {
       <Route path="/admin/users" element={<AdminRoute><AdminUsersPage /></AdminRoute>} />
       <Route path="/admin/authors" element={<AdminRoute><AdminAuthorsPage /></AdminRoute>} />
       <Route path="/admin/upgrade-requests" element={<AdminRoute><AdminUpgradeRequestsPage /></AdminRoute>} />
+      <Route path="/admin/settings" element={<AdminRoute><AdminSettingsPage /></AdminRoute>} />
     </Routes>
   );
 }

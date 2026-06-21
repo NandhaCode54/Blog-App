@@ -115,3 +115,35 @@ export async function approveUpgradeRequest(id: number): Promise<void> {
 export async function rejectUpgradeRequest(id: number, reason: string): Promise<void> {
   await api.put(`/admin/upgrade-requests/${id}/reject`, { reason });
 }
+
+// ---- Site Settings ----
+
+export async function fetchSettings(): Promise<Record<string, string>> {
+  const { data } = await api.get<Record<string, string>>("/settings");
+  return data;
+}
+
+export async function updateSettings(updates: Record<string, string>): Promise<Record<string, string>> {
+  const { data } = await api.put<Record<string, string>>("/admin/settings", updates);
+  return data;
+}
+
+// ---- Media ----
+
+export interface MediaUploadResult {
+  url: string;
+  filename: string;
+}
+
+export async function uploadMedia(file: File): Promise<MediaUploadResult> {
+  const form = new FormData();
+  form.append("file", file);
+  const { data } = await api.post<MediaUploadResult>("/media/upload", form, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data;
+}
+
+export async function deleteMedia(id: number): Promise<void> {
+  await api.delete(`/media/${id}`);
+}

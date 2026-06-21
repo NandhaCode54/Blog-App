@@ -9,6 +9,7 @@ const navItems = [
   { to: "/admin/authors", label: "Authors", icon: "bi-pen" },
   { to: "/admin/upgrade-requests", label: "Upgrade Requests", icon: "bi-person-check" },
   { to: "/admin/categories", label: "Categories", icon: "bi-tag" },
+  { to: "/admin/settings", label: "Settings", icon: "bi-gear" },
 ];
 
 export default function AdminLayout({ children }: { children: ReactNode }) {

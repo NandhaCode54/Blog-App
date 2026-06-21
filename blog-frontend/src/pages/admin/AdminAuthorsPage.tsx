@@ -4,6 +4,7 @@ import toast from "react-hot-toast";
 import { fetchAuthors, upsertAuthorProfile, type AuthorProfileInput } from "../../adminServices";
 import type { AuthorProfile } from "../../types";
 import AdminLayout from "../../components/AdminLayout";
+import MediaUpload from "../../components/MediaUpload";
 
 const EMPTY_FORM: AuthorProfileInput = {
   bio: "",
@@ -139,12 +140,11 @@ export default function AdminAuthorsPage() {
                   />
                 </div>
                 <div className="mb-3">
-                  <label className="form-label">Avatar URL</label>
-                  <input
-                    className="form-control"
-                    value={form.avatarUrl}
-                    onChange={(e) => setForm({ ...form, avatarUrl: e.target.value })}
-                    placeholder="https://..."
+                  <MediaUpload
+                    label="Avatar"
+                    value={form.avatarUrl ?? ""}
+                    onChange={(url) => setForm({ ...form, avatarUrl: url })}
+                    hint="Square image recommended, max 5 MB"
                   />
                 </div>
                 <div className="mb-3">

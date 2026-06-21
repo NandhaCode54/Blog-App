@@ -51,7 +51,9 @@ public class SecurityConfig {
                         "/posts", "/posts/**",
                         "/categories", "/categories/**",
                         "/tags", "/tags/**",
-                        "/authors", "/authors/**"
+                        "/authors", "/authors/**",
+                        "/settings",
+                        "/media/**"
                 ).permitAll()
                 .requestMatchers(
                         "/v3/api-docs/**",
