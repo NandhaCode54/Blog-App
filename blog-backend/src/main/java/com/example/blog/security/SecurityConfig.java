@@ -25,14 +25,17 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtFilter;
+    private final RateLimitFilter rateLimitFilter;
     private final RestAuthenticationEntryPoint authEntryPoint;
 
     @Value("${app.cors.allowed-origins}")
     private String allowedOrigins;
 
     public SecurityConfig(JwtAuthenticationFilter jwtFilter,
+                          RateLimitFilter rateLimitFilter,
                           RestAuthenticationEntryPoint authEntryPoint) {
         this.jwtFilter = jwtFilter;
+        this.rateLimitFilter = rateLimitFilter;
         this.authEntryPoint = authEntryPoint;
     }
 
@@ -62,6 +65,7 @@ public class SecurityConfig {
                 .authenticationEntryPoint(authEntryPoint)
                 .accessDeniedHandler(authEntryPoint)
             )
+            .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

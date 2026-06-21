@@ -1,6 +1,8 @@
 package com.example.blog.security;
 
 import com.example.blog.entity.Role;
+import com.example.blog.entity.UserStatus;
+import com.example.blog.repository.UserRepository;
 import com.example.blog.service.JwtService;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
@@ -20,17 +22,18 @@ import java.io.IOException;
 import java.util.List;
 
 /**
- * Reads the {@code Authorization: Bearer <jwt>} header, validates the token and
- * populates the SecurityContext. Invalid/absent tokens are simply ignored here —
- * authorization rules in SecurityConfig decide whether that is allowed.
+ * Reads the {@code Authorization: Bearer <jwt>} header, validates the token,
+ * checks the user is not banned/suspended, and populates the SecurityContext.
  */
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwt;
+    private final UserRepository users;
 
-    public JwtAuthenticationFilter(JwtService jwt) {
+    public JwtAuthenticationFilter(JwtService jwt, UserRepository users) {
         this.jwt = jwt;
+        this.users = users;
     }
 
     @Override
@@ -49,13 +52,25 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 String email = claims.getSubject();
                 Role role = Role.valueOf(claims.get("role", String.class));
 
+                if (userId == null || email == null) {
+                    chain.doFilter(request, response);
+                    return;
+                }
+
+                // Enforce ban: check live status from DB so bans take effect immediately
+                var userOpt = users.findById(userId);
+                if (userOpt.isEmpty() || userOpt.get().getStatus() != UserStatus.ACTIVE) {
+                    // Banned or suspended — treat as unauthenticated
+                    chain.doFilter(request, response);
+                    return;
+                }
+
                 UserPrincipal principal = new UserPrincipal(userId, email, role);
                 var authorities = List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
                 var auth = new UsernamePasswordAuthenticationToken(principal, null, authorities);
                 auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(auth);
             } catch (JwtException | IllegalArgumentException ex) {
-                // Invalid token: leave the context unauthenticated.
                 SecurityContextHolder.clearContext();
             }
         }

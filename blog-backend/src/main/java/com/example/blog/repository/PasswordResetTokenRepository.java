@@ -10,8 +10,8 @@ import java.util.Optional;
 
 public interface PasswordResetTokenRepository extends JpaRepository<PasswordResetToken, Long> {
 
-    Optional<PasswordResetToken> findByTokenHashAndUsedFalseAndExpiresAtAfter(
-            String tokenHash, Instant now);
+    Optional<PasswordResetToken> findByUserIdAndUsedFalseAndExpiresAtAfter(
+            Long userId, Instant now);
 
     @Modifying
     @Query("DELETE FROM PasswordResetToken t WHERE t.user.id = :userId")

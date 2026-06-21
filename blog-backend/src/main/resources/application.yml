@@ -14,29 +14,26 @@ spring:
     enabled: true
     locations: classpath:db/migration
 
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_USERNAME:nandha762003@gmail.com}
+    password: ${MAIL_PASSWORD:lsnw opqa lend oipf}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
 # 256-bit (32-char+) secret used for signing & parsing JWTs.
-# Override in every real environment via the JWT_SECRET env var.
 jwt:
   secret: ${JWT_SECRET:my_super_secret_key_for_jwt_1234567890}
-  # Access token lifetime in milliseconds (default 15 minutes)
   access-expiration-ms: ${JWT_ACCESS_EXPIRATION_MS:900000}
-  # Refresh token lifetime in milliseconds (default 7 days)
   refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION_MS:604800000}
 
 # Allowed CORS origins (comma-separated)
 app:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
-  # Frontend base URL used in password-reset emails
   frontend-url: ${FRONTEND_URL:http://localhost:5173}
-
-# Email (optional). Set MAIL_HOST to enable; tokens are logged to console when unset.
-# spring:
-#   mail:
-#     host: ${MAIL_HOST:smtp.gmail.com}
-#     port: ${MAIL_PORT:587}
-#     username: ${MAIL_USERNAME:}
-#     password: ${MAIL_PASSWORD:}
-#     properties:
-#       mail.smtp.auth: true
-#       mail.smtp.starttls.enable: true
