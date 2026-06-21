@@ -24,17 +24,20 @@ public class AuthorService {
     private final PostRepository posts;
     private final CommentRepository comments;
     private final AuthorUpgradeRequestRepository upgradeRequests;
+    private final NotificationService notifications;
 
     public AuthorService(UserRepository users,
                          AuthorProfileRepository authorProfiles,
                          PostRepository posts,
                          CommentRepository comments,
-                         AuthorUpgradeRequestRepository upgradeRequests) {
+                         AuthorUpgradeRequestRepository upgradeRequests,
+                         NotificationService notifications) {
         this.users = users;
         this.authorProfiles = authorProfiles;
         this.posts = posts;
         this.comments = comments;
         this.upgradeRequests = upgradeRequests;
+        this.notifications = notifications;
     }
 
     // -----------------------------------------------------------------------
@@ -107,6 +110,15 @@ public class AuthorService {
         req.setUser(u);
         req.setMessage(message);
         upgradeRequests.save(req);
+
+        // Notify all admins
+        users.findAll().stream()
+                .filter(a -> a.getRole() == Role.ADMIN)
+                .forEach(admin -> notifications.create(
+                        admin.getId(), "UPGRADE_REQUEST",
+                        u.getName() + " requested author upgrade",
+                        message != null ? message : "No message provided.",
+                        "/admin/upgrade-requests"));
     }
 
     @Transactional(readOnly = true)
@@ -140,6 +152,11 @@ public class AuthorService {
         User u = req.getUser();
         u.setRole(Role.AUTHOR);
         users.save(u);
+
+        notifications.create(u.getId(), "UPGRADE_APPROVED",
+                "You are now an author!",
+                "Your request was approved. Start creating posts from your dashboard.",
+                "/dashboard");
     }
 
     @Transactional
@@ -151,6 +168,11 @@ public class AuthorService {
         req.setReviewedBy(admin.id());
         req.setReviewedAt(Instant.now());
         upgradeRequests.save(req);
+
+        notifications.create(req.getUser().getId(), "UPGRADE_REJECTED",
+                "Author upgrade request declined",
+                reason != null && !reason.isBlank() ? reason : "Your request was reviewed and declined.",
+                null);
     }
 
     // -----------------------------------------------------------------------

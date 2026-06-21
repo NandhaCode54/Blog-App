@@ -127,6 +127,19 @@ export interface AuthorProfile {
   postCount: number;
 }
 
+// ---- Notification types ----
+
+export interface Notification {
+  id: number;
+  userId: number;
+  type: string;
+  title: string;
+  body: string | null;
+  link: string | null;
+  read: boolean;
+  createdAt: string;
+}
+
 export interface AdminStats {
   totalUsers: number;
   totalAuthors: number;

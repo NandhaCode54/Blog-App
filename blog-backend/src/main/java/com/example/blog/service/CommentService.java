@@ -23,11 +23,14 @@ public class CommentService {
     private final CommentRepository comments;
     private final PostRepository posts;
     private final UserRepository users;
+    private final NotificationService notifications;
 
-    public CommentService(CommentRepository comments, PostRepository posts, UserRepository users) {
+    public CommentService(CommentRepository comments, PostRepository posts,
+                          UserRepository users, NotificationService notifications) {
         this.comments = comments;
         this.posts = posts;
         this.users = users;
+        this.notifications = notifications;
     }
 
     @Transactional(readOnly = true)
@@ -51,7 +54,18 @@ public class CommentService {
         c.setPost(post);
         c.setUser(user);
         c.setContent(req.content());
-        return toResponse(comments.save(c));
+        CommentResponse saved = toResponse(comments.save(c));
+
+        // Notify post author (skip if they commented on their own post)
+        Long authorId = post.getUser().getId();
+        if (!authorId.equals(userId)) {
+            notifications.create(
+                    authorId, "COMMENT",
+                    user.getName() + " commented on your post",
+                    "“" + req.content().substring(0, Math.min(req.content().length(), 80)) + "”",
+                    "/posts/" + post.getId());
+        }
+        return saved;
     }
 
     @Transactional

@@ -9,23 +9,41 @@ import com.example.blog.entity.User;
 import com.example.blog.exception.EmailAlreadyExistsException;
 import com.example.blog.exception.InvalidCredentialsException;
 import com.example.blog.repository.UserRepository;
+import jakarta.mail.internet.MimeMessage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.Optional;
+
 @Service
 public class UserService {
+
+    private static final Logger log = LoggerFactory.getLogger(UserService.class);
 
     private final UserRepository repo;
     private final PasswordEncoder encoder;
     private final JwtService jwt;
     private final RefreshTokenService refreshTokens;
+    private final NotificationService notifications;
+    private final Optional<JavaMailSender> mailer;
+
+    @Value("${app.frontend-url:http://localhost:5173}")
+    private String frontendUrl;
 
     public UserService(UserRepository repo, PasswordEncoder encoder, JwtService jwt,
-                       RefreshTokenService refreshTokens) {
+                       RefreshTokenService refreshTokens, NotificationService notifications,
+                       Optional<JavaMailSender> mailer) {
         this.repo = repo;
         this.encoder = encoder;
         this.jwt = jwt;
         this.refreshTokens = refreshTokens;
+        this.notifications = notifications;
+        this.mailer = mailer;
     }
 
     /** Create a brand-new account. Fails if the email is already taken. */
@@ -41,7 +59,42 @@ public class UserService {
         user.setRole(Role.USER);
         user = repo.save(user);
 
+        sendWelcomeNotification(user);
         return issueTokens(user);
+    }
+
+    private void sendWelcomeNotification(User user) {
+        notifications.create(
+                user.getId(), "WELCOME",
+                "Welcome to BlogHub!",
+                "Start exploring posts, or apply to become an author.",
+                "/");
+        mailer.ifPresent(m -> {
+            try {
+                MimeMessage msg = m.createMimeMessage();
+                MimeMessageHelper h = new MimeMessageHelper(msg, true, "UTF-8");
+                h.setTo(user.getEmail());
+                h.setSubject("Welcome to BlogHub, " + user.getName() + "!");
+                h.setText(buildWelcomeHtml(user), true);
+                m.send(msg);
+            } catch (Exception e) {
+                log.warn("Failed to send welcome email to {}: {}", user.getEmail(), e.getMessage());
+            }
+        });
+    }
+
+    private String buildWelcomeHtml(User user) {
+        return """
+                <html><body style="font-family:sans-serif;max-width:520px;margin:0 auto">
+                  <h2 style="color:#0d6efd">Welcome to BlogHub!</h2>
+                  <p>Hi <strong>%s</strong>, your account is ready.</p>
+                  <p>Start reading, or <a href="%s/author/request-upgrade">apply to become an author</a>
+                     and share your stories with the world.</p>
+                  <a href="%s" style="display:inline-block;margin-top:12px;padding:10px 20px;
+                     background:#0d6efd;color:#fff;border-radius:6px;text-decoration:none">
+                     Visit BlogHub</a>
+                </body></html>
+                """.formatted(user.getName(), frontendUrl, frontendUrl);
     }
 
     /** Authenticate an existing account. Never creates a new one. */

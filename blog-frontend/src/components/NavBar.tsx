@@ -3,6 +3,7 @@ import toast from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import BlogLogo from "./BlogLogo";
+import NotificationBell from "./NotificationBell";
 
 export default function NavBar() {
   const { isAuthenticated, isAdmin, user, logout } = useAuth();
@@ -55,6 +56,9 @@ export default function NavBar() {
 
             {isAuthenticated ? (
               <>
+                <li className="nav-item d-flex align-items-center">
+                  <NotificationBell />
+                </li>
                 {user?.name && (
                   <li className="nav-item">
                     <span className="navbar-text">
