@@ -1,0 +1,74 @@
+# ─── Secrets & local config ───────────────────────────────────────────────────
+.env
+.env.*
+*.env
+blog-backend/src/main/resources/application.yml
+blog-backend/src/main/resources/application-*.yml
+blog-backend/src/main/resources/application-local.properties
+
+# ─── Java / Maven build output ────────────────────────────────────────────────
+blog-backend/target/
+*.class
+*.jar
+!blog-backend/.mvn/wrapper/maven-wrapper.jar
+*.war
+*.ear
+*.nar
+hs_err_pid*
+replay_pid*
+
+# ─── Spring Boot devtools ─────────────────────────────────────────────────────
+.spring-boot-devtools.properties
+
+# ─── Node / npm ───────────────────────────────────────────────────────────────
+blog-frontend/node_modules/
+blog-frontend/dist/
+blog-frontend/.vite/
+blog-frontend/.cache/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+
+# ─── Logs ─────────────────────────────────────────────────────────────────────
+logs/
+*.log
+log/
+
+# ─── IDE & editor ─────────────────────────────────────────────────────────────
+.idea/
+*.iml
+*.ipr
+*.iws
+.classpath
+.project
+.settings/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.metals/
+.bloop/
+
+# ─── OS generated ─────────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ─── Test & coverage output ───────────────────────────────────────────────────
+coverage/
+*.lcov
+.nyc_output/
+
+# ─── Misc ─────────────────────────────────────────────────────────────────────
+*.bak
+*.tmp
+*.orig
