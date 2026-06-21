@@ -22,7 +22,6 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.Base64;
 import java.util.HexFormat;
 import java.util.Optional;
 
@@ -31,16 +30,14 @@ import java.util.Optional;
 public class PasswordResetService {
 
     private static final Logger log = LoggerFactory.getLogger(PasswordResetService.class);
-    private static final int TOKEN_EXPIRY_MINUTES = 15;
+    private static final int OTP_EXPIRY_MINUTES = 10;
+    private static final int MAX_ATTEMPTS = 5;
     private static final SecureRandom RANDOM = new SecureRandom();
 
     private final PasswordResetTokenRepository tokenRepo;
     private final UserRepository userRepo;
     private final PasswordEncoder encoder;
     private final Optional<JavaMailSender> mailSender;
-
-    @Value("${app.frontend-url:http://localhost:5173}")
-    private String frontendUrl;
 
     @Value("${spring.mail.username:noreply@bloghub.com}")
     private String mailFrom;
@@ -56,60 +53,79 @@ public class PasswordResetService {
     }
 
     /**
-     * Initiates a password reset. Always returns successfully — never reveals
-     * whether the email is registered.
+     * Generates a 6-digit OTP for the given email and sends it.
+     * Always returns successfully — never reveals whether the email is registered.
      */
     public void initiatePasswordReset(String email) {
         Optional<User> userOpt = userRepo.findByEmail(email.trim());
         if (userOpt.isEmpty()) {
-            log.debug("Password reset requested for unregistered email");
+            log.debug("OTP requested for unregistered email");
             return;
         }
 
         User user = userOpt.get();
 
-        // Invalidate any existing tokens for this user
+        // Invalidate any existing OTP for this user
         tokenRepo.deleteByUserId(user.getId());
 
-        // Generate a cryptographically secure random token (256-bit)
-        byte[] tokenBytes = new byte[32];
-        RANDOM.nextBytes(tokenBytes);
-        String rawToken = Base64.getUrlEncoder().withoutPadding().encodeToString(tokenBytes);
-        String tokenHash = sha256Hex(rawToken);
+        // 6-digit OTP: 100000–999999
+        String rawOtp = String.valueOf(100000 + RANDOM.nextInt(900000));
+        String otpHash = sha256Hex(rawOtp);
 
         PasswordResetToken prt = new PasswordResetToken();
         prt.setUser(user);
-        prt.setTokenHash(tokenHash);
-        prt.setExpiresAt(Instant.now().plus(TOKEN_EXPIRY_MINUTES, ChronoUnit.MINUTES));
+        prt.setOtpHash(otpHash);
+        prt.setExpiresAt(Instant.now().plus(OTP_EXPIRY_MINUTES, ChronoUnit.MINUTES));
         tokenRepo.save(prt);
 
-        String resetUrl = frontendUrl + "/reset-password?token=" + rawToken;
-        sendResetEmail(user, resetUrl);
+        sendOtpEmail(user, rawOtp);
     }
 
     /**
-     * Validates the reset token and updates the user's password.
-     * The token is single-use — it is marked used after a successful reset.
+     * Verifies the OTP and resets the password.
+     * Tracks failed attempts — locks out after MAX_ATTEMPTS.
      */
-    public void resetPassword(String rawToken, String newPassword) {
-        String tokenHash = sha256Hex(rawToken);
-        PasswordResetToken prt = tokenRepo
-                .findByTokenHashAndUsedFalseAndExpiresAtAfter(tokenHash, Instant.now())
-                .orElseThrow(() -> new InvalidTokenException(
-                        "This reset link is invalid or has expired. Please request a new one."));
+    public void resetPassword(String email, String rawOtp, String newPassword) {
+        User user = userRepo.findByEmail(email.trim())
+                .orElseThrow(() -> new InvalidTokenException("Incorrect code. Please check and try again."));
 
-        User user = prt.getUser();
+        PasswordResetToken prt = tokenRepo
+                .findByUserIdAndUsedFalseAndExpiresAtAfter(user.getId(), Instant.now())
+                .orElseThrow(() -> new InvalidTokenException(
+                        "Your code has expired. Please request a new one."));
+
+        if (prt.getAttempts() >= MAX_ATTEMPTS) {
+            prt.setUsed(true);
+            tokenRepo.save(prt);
+            throw new InvalidTokenException(
+                    "Too many incorrect attempts. Please request a new code.");
+        }
+
+        if (!sha256Hex(rawOtp).equals(prt.getOtpHash())) {
+            int newAttempts = prt.getAttempts() + 1;
+            prt.setAttempts(newAttempts);
+            if (newAttempts >= MAX_ATTEMPTS) {
+                prt.setUsed(true);
+            }
+            tokenRepo.save(prt);
+
+            int remaining = MAX_ATTEMPTS - newAttempts;
+            String msg = remaining > 0
+                    ? "Incorrect code. " + remaining + " attempt" + (remaining == 1 ? "" : "s") + " remaining."
+                    : "Too many incorrect attempts. Please request a new code.";
+            throw new InvalidTokenException(msg);
+        }
+
         user.setPasswordHashed(encoder.encode(newPassword));
         userRepo.save(user);
 
-        // Mark as used to prevent token reuse
         prt.setUsed(true);
         tokenRepo.save(prt);
     }
 
-    private void sendResetEmail(User user, String resetUrl) {
+    private void sendOtpEmail(User user, String rawOtp) {
         if (mailSender.isEmpty()) {
-            log.info("Mail not configured — password reset URL for {}: {}", user.getEmail(), resetUrl);
+            log.info("Mail not configured — OTP for {}: {}", user.getEmail(), rawOtp);
             return;
         }
         try {
@@ -117,12 +133,12 @@ public class PasswordResetService {
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
             helper.setFrom(mailFrom);
             helper.setTo(user.getEmail());
-            helper.setSubject("Reset your BlogHub password");
-            helper.setText(buildEmailHtml(user.getName(), resetUrl), true);
+            helper.setSubject("Your BlogHub verification code");
+            helper.setText(buildOtpEmailHtml(user.getName(), rawOtp), true);
             mailSender.get().send(message);
-            log.info("Password reset email sent to {}", user.getEmail());
+            log.info("OTP email sent to {}", user.getEmail());
         } catch (MessagingException | RuntimeException e) {
-            log.error("Failed to send password reset email to {}: {}", user.getEmail(), e.getMessage());
+            log.error("Failed to send OTP email to {}: {}", user.getEmail(), e.getMessage());
         }
     }
 
@@ -136,14 +152,17 @@ public class PasswordResetService {
         }
     }
 
-    private String buildEmailHtml(String name, String resetUrl) {
+    private String buildOtpEmailHtml(String name, String otp) {
+        // Split OTP into individual digits for display
+        String digits = String.join("</td><td style=\"width:44px;height:52px;text-align:center;"
+                + "font-size:26px;font-weight:700;background:#f8fafc;border:2px solid #e2e8f0;"
+                + "border-radius:10px;color:#0f172a;\">",
+                otp.split(""));
+
         return """
                 <!DOCTYPE html>
                 <html lang="en">
-                <head>
-                  <meta charset="UTF-8"/>
-                  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-                </head>
+                <head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/></head>
                 <body style="margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
                   <table width="100%%" cellpadding="0" cellspacing="0" style="background:#f8fafc;padding:40px 16px;">
                     <tr><td align="center">
@@ -158,45 +177,36 @@ public class PasswordResetService {
                           </td>
                         </tr>
                         <tr>
-                          <td style="padding:36px 40px 28px;">
+                          <td style="padding:36px 40px 32px;">
                             <h1 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#0f172a;">
-                              Reset your password
+                              Your verification code
                             </h1>
-                            <p style="margin:0 0 24px;font-size:15px;color:#64748b;line-height:1.6;">
-                              Hi %s,<br/>
-                              We received a request to reset your BlogHub password.
-                              Click the button below to choose a new password.
+                            <p style="margin:0 0 28px;font-size:15px;color:#64748b;line-height:1.6;">
+                              Hi %s,<br/>Use the code below to reset your BlogHub password.
                             </p>
-                            <div style="text-align:center;margin:28px 0;">
-                              <a href="%s"
-                                 style="display:inline-block;background:linear-gradient(135deg,#6366f1,#8b5cf6);
-                                        color:#ffffff;text-decoration:none;padding:14px 36px;
-                                        border-radius:10px;font-size:15px;font-weight:600;">
-                                Reset Password
-                              </a>
-                            </div>
-                            <p style="margin:0 0 6px;font-size:13px;color:#94a3b8;">
-                              Or copy and paste this link into your browser:
-                            </p>
-                            <p style="margin:0 0 24px;font-size:12px;color:#6366f1;word-break:break-all;">%s</p>
+                            <table cellpadding="0" cellspacing="6" style="margin:0 auto 28px;">
+                              <tr>
+                                <td style="width:44px;height:52px;text-align:center;font-size:26px;
+                                           font-weight:700;background:#f8fafc;border:2px solid #e2e8f0;
+                                           border-radius:10px;color:#0f172a;">%s</td>
+                              </tr>
+                            </table>
                             <div style="background:#fef3c7;border-radius:8px;padding:12px 16px;margin-bottom:12px;">
                               <p style="margin:0;font-size:13px;color:#92400e;">
-                                &#9203;&nbsp;This link expires in <strong>15 minutes</strong>.
+                                &#9203;&nbsp;This code expires in <strong>10 minutes</strong>.
+                                You have <strong>5 attempts</strong> before it is locked.
                               </p>
                             </div>
                             <div style="background:#fef2f2;border-radius:8px;padding:12px 16px;">
                               <p style="margin:0;font-size:13px;color:#991b1b;">
                                 &#128274;&nbsp;If you didn't request this, you can safely ignore this email.
-                                Your password won't change.
                               </p>
                             </div>
                           </td>
                         </tr>
                         <tr>
                           <td style="border-top:1px solid #f1f5f9;padding:18px 40px;text-align:center;">
-                            <p style="margin:0;font-size:12px;color:#94a3b8;">
-                              &copy; 2025 BlogHub. All rights reserved.
-                            </p>
+                            <p style="margin:0;font-size:12px;color:#94a3b8;">&copy; 2025 BlogHub. All rights reserved.</p>
                           </td>
                         </tr>
                       </table>
@@ -204,6 +214,6 @@ public class PasswordResetService {
                   </table>
                 </body>
                 </html>
-                """.formatted(name, resetUrl, resetUrl);
+                """.formatted(name, digits);
     }
 }

@@ -191,6 +191,37 @@ main,
   margin-bottom: 1rem;
 }
 
+/* OTP digit boxes */
+.otp-box {
+  width: 44px;
+  height: 54px;
+  text-align: center;
+  font-size: 1.4rem;
+  font-weight: 700;
+  border: 2px solid var(--bs-border-color);
+  border-radius: 10px;
+  background: var(--bs-body-bg);
+  color: var(--bs-body-color);
+  caret-color: #6366f1;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+  outline: none;
+}
+
+.otp-box:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.otp-box.otp-filled {
+  border-color: #6366f1;
+  background: rgba(99, 102, 241, 0.05);
+}
+
+.otp-box.otp-error {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12);
+}
+
 /* Navbar logo mark */
 .nav-logo-mark {
   width: 28px;
