@@ -72,3 +72,48 @@ export interface ApiError {
   path: string;
   fieldErrors?: Record<string, string> | null;
 }
+
+// ---- Admin types ----
+
+export type UserStatus = "ACTIVE" | "SUSPENDED" | "BANNED";
+
+export interface AdminUser {
+  id: number;
+  name: string;
+  email: string;
+  role: Role;
+  status: UserStatus;
+  createdAt: string;
+  bannedAt: string | null;
+  banReason: string | null;
+  hideContent: boolean;
+  postCount: number;
+}
+
+export interface AuthorProfile {
+  userId: number;
+  name: string;
+  email: string;
+  role: Role;
+  status: UserStatus;
+  createdAt: string;
+  bio: string | null;
+  avatarUrl: string | null;
+  website: string | null;
+  twitter: string | null;
+  linkedin: string | null;
+  postCount: number;
+}
+
+export interface AdminStats {
+  totalUsers: number;
+  totalAuthors: number;
+  totalAdmins: number;
+  bannedUsers: number;
+  totalPosts: number;
+  publishedPosts: number;
+  draftPosts: number;
+  totalComments: number;
+  totalCategories: number;
+  totalTags: number;
+}

@@ -35,4 +35,11 @@ public interface PostRepository extends JpaRepository<Post, Long> {
                       @Param("categoryId") Long categoryId,
                       @Param("tag") String tag,
                       Pageable pageable);
+
+    long countByUserId(Long userId);
+    long countByStatus(PostStatus status);
+    long countByUserIdAndStatus(Long userId, PostStatus status);
+
+    Page<Post> findByUserIdAndStatusOrderByCreatedAtDesc(Long userId, PostStatus status, Pageable pageable);
+    Page<Post> findByUserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
 }

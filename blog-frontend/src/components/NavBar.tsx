@@ -1,10 +1,10 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 
 export default function NavBar() {
-  const { isAuthenticated, user, logout } = useAuth();
+  const { isAuthenticated, isAdmin, user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
@@ -47,6 +47,13 @@ export default function NavBar() {
                         <span className="badge text-bg-warning ms-1">Admin</span>
                       )}
                     </span>
+                  </li>
+                )}
+                {isAdmin && (
+                  <li className="nav-item">
+                    <NavLink className="btn btn-sm btn-warning" to="/admin">
+                      Admin Panel
+                    </NavLink>
                   </li>
                 )}
                 <li className="nav-item">

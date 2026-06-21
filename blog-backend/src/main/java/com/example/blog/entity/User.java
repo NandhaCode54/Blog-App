@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.Instant;
+
 @Entity
 @Table(name = "users")
 @Getter
@@ -16,7 +18,6 @@ public class User {
     @Column(nullable = false, unique = true)
     private String email;
 
-    /** 🆕 full‑name (nullable = true if you want to allow blank) */
     @Column(length = 150)
     private String name;
 
@@ -27,4 +28,19 @@ public class User {
     @Column(nullable = false, length = 20)
     private Role role = Role.USER;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private UserStatus status = UserStatus.ACTIVE;
+
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private Instant createdAt = Instant.now();
+
+    @Column(name = "banned_at")
+    private Instant bannedAt;
+
+    @Column(name = "ban_reason", length = 255)
+    private String banReason;
+
+    @Column(name = "hide_content", nullable = false)
+    private boolean hideContent = false;
 }
