@@ -17,6 +17,7 @@ export interface PostInput {
   status?: "DRAFT" | "PUBLISHED";
   categoryId?: number | null;
   tags?: string[];
+  coverImageUrl?: string | null;
 }
 
 export async function fetchPosts(params: PostQuery): Promise<Page<Post>> {

@@ -173,6 +173,7 @@ public class PostService {
         post.setReadingTime(estimateReadingTime(req.content()));
         post.setCategory(resolveCategory(req.categoryId()));
         post.setTags(resolveTags(req.tags()));
+        post.setCoverImageUrl(req.coverImageUrl());
     }
 
     private Category resolveCategory(Long categoryId) {
@@ -246,6 +247,7 @@ public class PostService {
                 p.getContent(),
                 p.getStatus().name(),
                 p.getRejectReason(),
+                p.getCoverImageUrl(),
                 p.getReadingTime(),
                 author.getId(),
                 author.getName(),

@@ -4,10 +4,12 @@ import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import BlogLogo from "./BlogLogo";
 import NotificationBell from "./NotificationBell";
+import { useSiteSettings } from "../hooks/useSiteSettings";
 
 export default function NavBar() {
   const { isAuthenticated, isAdmin, user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { title, logoUrl } = useSiteSettings();
   const navigate = useNavigate();
   const isAuthor = user?.role === "AUTHOR" || user?.role === "ADMIN";
 
@@ -21,10 +23,12 @@ export default function NavBar() {
     <nav className="navbar navbar-expand-lg bg-body-tertiary border-bottom sticky-top">
       <div className="container">
         <Link className="navbar-brand fw-bold d-flex align-items-center gap-2" to="/">
-          <span className="nav-logo-mark">
-            <BlogLogo size={16} />
-          </span>
-          BlogHub
+          {logoUrl ? (
+            <img src={logoUrl} alt={title} style={{ height: 24, width: "auto" }} />
+          ) : (
+            <span className="nav-logo-mark"><BlogLogo size={16} /></span>
+          )}
+          {title}
         </Link>
 
         <button className="navbar-toggler" type="button"

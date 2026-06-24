@@ -11,6 +11,7 @@ public record PostResponse(
         String content,
         String status,
         String rejectReason,
+        String coverImageUrl,
         int readingTime,
         Long authorId,
         String authorName,

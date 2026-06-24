@@ -25,5 +25,8 @@ public record PostRequest(
 
         Long categoryId,
 
-        List<String> tags
+        List<String> tags,
+
+        @Size(max = 500, message = "Cover image URL must be at most 500 characters")
+        String coverImageUrl
 ) {}

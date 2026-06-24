@@ -52,6 +52,9 @@ public class Post {
     )
     private Set<Tag> tags = new HashSet<>();
 
+    @Column(name = "cover_image_url", length = 500)
+    private String coverImageUrl;
+
     @Column(name = "reject_reason", columnDefinition = "TEXT")
     private String rejectReason;
 

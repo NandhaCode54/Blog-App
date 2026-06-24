@@ -2,12 +2,9 @@ import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import {
-  createComment,
-  deleteComment,
-  fetchComments,
-  fetchPost,
-} from "../services";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { createComment, deleteComment, fetchComments, fetchPost } from "../services";
 import { apiErrorMessage } from "../api";
 import { useAuth } from "../context/AuthContext";
 
@@ -64,18 +61,32 @@ export default function PostDetailPage() {
   const post = postQuery.data;
 
   return (
-    <div className="container py-4" style={{ maxWidth: 760 }}>
+    <div className="container py-4" style={{ maxWidth: 780 }}>
       <Link to="/" className="btn btn-sm btn-outline-secondary mb-3">← Back</Link>
 
       <article>
+        {/* Cover image */}
+        {post.coverImageUrl && (
+          <img
+            src={post.coverImageUrl}
+            alt={post.title}
+            className="w-100 rounded-3 mb-4 object-fit-cover"
+            style={{ maxHeight: 360 }}
+          />
+        )}
+
         <div className="d-flex gap-2 mb-2 flex-wrap">
           {post.categoryName && <span className="badge text-bg-info">{post.categoryName}</span>}
           <span className="badge text-bg-light border">{post.readingTime} min read</span>
           {post.status === "DRAFT" && <span className="badge text-bg-warning">Draft</span>}
+          {post.status === "UNDER_REVIEW" && <span className="badge text-bg-info">Under Review</span>}
         </div>
+
         <h1 className="mb-2">{post.title}</h1>
         <p className="text-muted small">
-          By {post.authorName} · {new Date(post.createdAt).toLocaleDateString()}
+          By <Link to={`/authors/${post.authorId}`} className="text-decoration-none">{post.authorName}</Link>
+          {" · "}
+          {new Date(post.createdAt).toLocaleDateString()}
           {post.updatedAt && <> · edited {new Date(post.updatedAt).toLocaleDateString()}</>}
         </p>
 
@@ -85,8 +96,11 @@ export default function PostDetailPage() {
           ))}
         </div>
 
-        <div style={{ whiteSpace: "pre-wrap" }} className="fs-5 lh-base">
-          {post.content}
+        {/* Markdown content */}
+        <div className="prose lh-base">
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            {post.content}
+          </ReactMarkdown>
         </div>
       </article>
 

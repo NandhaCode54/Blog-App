@@ -3,8 +3,11 @@ package com.example.blog.controller;
 import com.example.blog.dto.AuthorDashboardStats;
 import com.example.blog.dto.PageResponse;
 import com.example.blog.dto.PostResponse;
+import com.example.blog.dto.PublicAuthorResponse;
 import com.example.blog.security.UserPrincipal;
 import com.example.blog.service.AuthorService;
+import com.example.blog.service.AdminUserService;
+import com.example.blog.dto.admin.AuthorProfileRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -23,9 +26,11 @@ import java.util.Map;
 public class AuthorDashboardController {
 
     private final AuthorService authorService;
+    private final AdminUserService adminUserService;
 
-    public AuthorDashboardController(AuthorService authorService) {
+    public AuthorDashboardController(AuthorService authorService, AdminUserService adminUserService) {
         this.authorService = authorService;
+        this.adminUserService = adminUserService;
     }
 
     @Operation(summary = "My stats (posts, drafts, comments received)")
@@ -59,5 +64,19 @@ public class AuthorDashboardController {
     @GetMapping("/request-upgrade/status")
     public Map<String, String> upgradeStatus(@AuthenticationPrincipal UserPrincipal me) {
         return Map.of("status", authorService.getMyRequestStatus(me.id()));
+    }
+
+    @Operation(summary = "Get my author profile")
+    @GetMapping("/me/profile")
+    public PublicAuthorResponse myProfile(@AuthenticationPrincipal UserPrincipal me) {
+        return authorService.getPublicAuthorForSelf(me.id());
+    }
+
+    @Operation(summary = "Update my author profile")
+    @PutMapping("/me/profile")
+    public PublicAuthorResponse updateMyProfile(@AuthenticationPrincipal UserPrincipal me,
+                                                 @RequestBody AuthorProfileRequest req) {
+        adminUserService.upsertAuthorProfilePublic(me.id(), req);
+        return authorService.getPublicAuthorForSelf(me.id());
     }
 }

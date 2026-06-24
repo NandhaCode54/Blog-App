@@ -52,3 +52,23 @@ export async function fetchUpgradeStatus(): Promise<UpgradeRequestStatus> {
   );
   return data.status;
 }
+
+// ---- Profile self-edit ----
+
+export interface ProfileInput {
+  bio?: string;
+  avatarUrl?: string;
+  website?: string;
+  twitter?: string;
+  linkedin?: string;
+}
+
+export async function fetchMyProfile(): Promise<PublicAuthor> {
+  const { data } = await api.get<PublicAuthor>("/author/me/profile");
+  return data;
+}
+
+export async function updateMyProfile(input: ProfileInput): Promise<PublicAuthor> {
+  const { data } = await api.put<PublicAuthor>("/author/me/profile", input);
+  return data;
+}

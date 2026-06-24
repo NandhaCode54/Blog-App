@@ -62,6 +62,12 @@ public class AuthorService {
         return toPublicAuthor(u);
     }
 
+    /** Returns own author profile without role check — used by the author dashboard self-edit. */
+    @Transactional(readOnly = true)
+    public PublicAuthorResponse getPublicAuthorForSelf(Long userId) {
+        return toPublicAuthor(findUser(userId));
+    }
+
     @Transactional(readOnly = true)
     public PageResponse<PostResponse> getAuthorPublishedPosts(Long authorId, Pageable pageable) {
         Page<Post> page = posts.findByUserIdAndStatusOrderByCreatedAtDesc(
@@ -231,7 +237,8 @@ public class AuthorService {
         List<String> tagNames = p.getTags().stream().map(Tag::getName).sorted().toList();
         return new PostResponse(
                 p.getId(), p.getTitle(), p.getSlug(), p.getExcerpt(), p.getContent(),
-                p.getStatus().name(), p.getReadingTime(),
+                p.getStatus().name(), p.getRejectReason(), p.getCoverImageUrl(),
+                p.getReadingTime(),
                 author.getId(), author.getName(), author.getEmail(),
                 category == null ? null : category.getId(),
                 category == null ? null : category.getName(),

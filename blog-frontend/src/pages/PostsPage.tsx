@@ -6,6 +6,7 @@ import {
   deletePost,
   fetchCategories,
   fetchPosts,
+  fetchTags,
 } from "../services";
 import { apiErrorMessage } from "../api";
 import { useAuth } from "../context/AuthContext";
@@ -20,6 +21,7 @@ export default function PostsPage() {
   const [search, setSearch] = useState("");
   const [debounced, setDebounced] = useState("");
   const [category, setCategory] = useState<number | "">("");
+  const [tag, setTag] = useState("");
   const [page, setPage] = useState(0);
 
   // Debounce the search box so we don't fire a request per keystroke.
@@ -32,11 +34,12 @@ export default function PostsPage() {
   }, [search]);
 
   const categoriesQuery = useQuery({ queryKey: ["categories"], queryFn: fetchCategories });
+  const tagsQuery = useQuery({ queryKey: ["tags"], queryFn: fetchTags });
 
   const postsQuery = useQuery({
-    queryKey: ["posts", { q: debounced, category, page }],
+    queryKey: ["posts", { q: debounced, category, tag, page }],
     queryFn: () =>
-      fetchPosts({ q: debounced, category: category || null, page, size: PAGE_SIZE }),
+      fetchPosts({ q: debounced, category: category || null, tag: tag || null, page, size: PAGE_SIZE }),
     placeholderData: keepPreviousData,
   });
 
@@ -74,10 +77,7 @@ export default function PostsPage() {
           <select
             className="form-select"
             value={category}
-            onChange={(e) => {
-              setCategory(e.target.value ? Number(e.target.value) : "");
-              setPage(0);
-            }}
+            onChange={(e) => { setCategory(e.target.value ? Number(e.target.value) : ""); setPage(0); }}
           >
             <option value="">All categories</option>
             {categoriesQuery.data?.map((c) => (
@@ -85,6 +85,28 @@ export default function PostsPage() {
             ))}
           </select>
         </div>
+        <div className="col-12 col-md-auto">
+          <select
+            className="form-select"
+            value={tag}
+            onChange={(e) => { setTag(e.target.value); setPage(0); }}
+          >
+            <option value="">All tags</option>
+            {tagsQuery.data?.map((t) => (
+              <option key={t.id} value={t.slug}>#{t.name}</option>
+            ))}
+          </select>
+        </div>
+        {(search || category || tag) && (
+          <div className="col-12 col-md-auto">
+            <button
+              className="btn btn-outline-secondary"
+              onClick={() => { setSearch(""); setCategory(""); setTag(""); setPage(0); }}
+            >
+              Clear filters
+            </button>
+          </div>
+        )}
       </div>
 
       {postsQuery.isLoading ? (
@@ -104,6 +126,14 @@ export default function PostsPage() {
             {data.content.map((p) => (
               <div className="col-12 col-sm-6 col-lg-4" key={p.id}>
                 <div className="card h-100 shadow-sm">
+                  {p.coverImageUrl && (
+                    <img
+                      src={p.coverImageUrl}
+                      alt={p.title}
+                      className="card-img-top object-fit-cover"
+                      style={{ height: 160 }}
+                    />
+                  )}
                   <div className="card-body d-flex flex-column">
                     <div className="d-flex gap-2 mb-2 flex-wrap">
                       {p.categoryName && (

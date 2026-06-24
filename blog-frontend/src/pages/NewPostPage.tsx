@@ -1,12 +1,14 @@
-import { useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { useEffect, useState } from "react";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
+import MDEditor from "@uiw/react-md-editor";
 import { createPost, fetchCategories, fetchPost, updatePost, type PostInput } from "../services";
 import { apiErrorMessage } from "../api";
+import MediaUpload from "../components/MediaUpload";
 
 const schema = z.object({
   title: z.string().min(1, "Title is required").max(255, "Title is too long"),
@@ -25,6 +27,7 @@ export default function NewPostPage() {
   const postId = Number(id);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [coverImageUrl, setCoverImageUrl] = useState("");
 
   const categoriesQuery = useQuery({ queryKey: ["categories"], queryFn: fetchCategories });
   const postQuery = useQuery({
@@ -37,13 +40,13 @@ export default function NewPostPage() {
     register,
     handleSubmit,
     reset,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { status: "PUBLISHED" },
   });
 
-  // Populate the form when editing.
   useEffect(() => {
     if (isEdit && postQuery.data) {
       const p = postQuery.data;
@@ -51,10 +54,11 @@ export default function NewPostPage() {
         title: p.title,
         content: p.content,
         excerpt: p.excerpt ?? "",
-        status: p.status,
+        status: (p.status === "PUBLISHED" || p.status === "DRAFT") ? p.status : "DRAFT",
         categoryId: p.categoryId ? String(p.categoryId) : "",
         tags: p.tags.join(", "),
       });
+      setCoverImageUrl(p.coverImageUrl ?? "");
     }
   }, [isEdit, postQuery.data, reset]);
 
@@ -64,9 +68,8 @@ export default function NewPostPage() {
     excerpt: values.excerpt || undefined,
     status: values.status,
     categoryId: values.categoryId ? Number(values.categoryId) : null,
-    tags: values.tags
-      ? values.tags.split(",").map((t) => t.trim()).filter(Boolean)
-      : [],
+    tags: values.tags ? values.tags.split(",").map((t) => t.trim()).filter(Boolean) : [],
+    coverImageUrl: coverImageUrl || null,
   });
 
   const mutation = useMutation({
@@ -86,16 +89,18 @@ export default function NewPostPage() {
   }
 
   return (
-    <div className="container py-4" style={{ maxWidth: 720 }}>
+    <div className="container py-4" style={{ maxWidth: 800 }}>
       <h1 className="h3 mb-4">{isEdit ? "Edit Post" : "Create Post"}</h1>
 
       <form onSubmit={handleSubmit((v) => mutation.mutate(v))} noValidate>
+        {/* Title */}
         <div className="mb-3">
           <label className="form-label">Title</label>
           <input className={`form-control ${errors.title ? "is-invalid" : ""}`} {...register("title")} />
           {errors.title && <div className="invalid-feedback">{errors.title.message}</div>}
         </div>
 
+        {/* Category / Status row */}
         <div className="row g-3 mb-3">
           <div className="col-md-6">
             <label className="form-label">Category</label>
@@ -115,13 +120,25 @@ export default function NewPostPage() {
           </div>
         </div>
 
+        {/* Tags */}
         <div className="mb-3">
           <label className="form-label">Tags <span className="text-muted small">(comma-separated)</span></label>
           <input className="form-control" placeholder="java, spring, react" {...register("tags")} />
         </div>
 
+        {/* Cover image */}
         <div className="mb-3">
-          <label className="form-label">Excerpt <span className="text-muted small">(optional)</span></label>
+          <MediaUpload
+            label="Cover Image"
+            hint="Shown at the top of the post and in listing cards"
+            value={coverImageUrl}
+            onChange={setCoverImageUrl}
+          />
+        </div>
+
+        {/* Excerpt */}
+        <div className="mb-3">
+          <label className="form-label">Excerpt <span className="text-muted small">(optional — auto-generated if blank)</span></label>
           <textarea
             className={`form-control ${errors.excerpt ? "is-invalid" : ""}`}
             rows={2}
@@ -131,14 +148,26 @@ export default function NewPostPage() {
           {errors.excerpt && <div className="invalid-feedback">{errors.excerpt.message}</div>}
         </div>
 
+        {/* Markdown content editor */}
         <div className="mb-4">
           <label className="form-label">Content</label>
-          <textarea
-            className={`form-control ${errors.content ? "is-invalid" : ""}`}
-            style={{ minHeight: 220 }}
-            {...register("content")}
+          {errors.content && (
+            <div className="text-danger small mb-1">{errors.content.message}</div>
+          )}
+          <Controller
+            name="content"
+            control={control}
+            render={({ field }) => (
+              <div data-color-mode="light">
+                <MDEditor
+                  value={field.value}
+                  onChange={(val) => field.onChange(val ?? "")}
+                  height={400}
+                  preview="edit"
+                />
+              </div>
+            )}
           />
-          {errors.content && <div className="invalid-feedback">{errors.content.message}</div>}
         </div>
 
         <div className="d-flex gap-2">

@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
-import { fetchMyStats, fetchMyPosts } from "../authorServices";
+import { fetchMyStats, fetchMyPosts, fetchMyProfile, updateMyProfile } from "../authorServices";
 import { submitPostForReview } from "../adminServices";
 import { useAuth } from "../context/AuthContext";
+import MediaUpload from "../components/MediaUpload";
 import type { PostStatus } from "../types";
 
 const STATUS_BADGE: Record<PostStatus, string> = {
@@ -19,6 +20,31 @@ export default function AuthorDashboardPage() {
   const qc = useQueryClient();
   const [statusFilter, setStatusFilter] = useState("");
   const [page, setPage] = useState(0);
+  const [showProfile, setShowProfile] = useState(false);
+  const [profileForm, setProfileForm] = useState({ bio: "", avatarUrl: "", website: "", twitter: "", linkedin: "" });
+
+  const { data: profile } = useQuery({
+    queryKey: ["author", "me", "profile"],
+    queryFn: fetchMyProfile,
+  });
+
+  useEffect(() => {
+    if (profile) {
+      setProfileForm({
+        bio: profile.bio ?? "",
+        avatarUrl: profile.avatarUrl ?? "",
+        website: profile.website ?? "",
+        twitter: profile.twitter ?? "",
+        linkedin: profile.linkedin ?? "",
+      });
+    }
+  }, [profile]);
+
+  const doSaveProfile = useMutation({
+    mutationFn: () => updateMyProfile(profileForm),
+    onSuccess: () => { toast.success("Profile saved"); qc.invalidateQueries({ queryKey: ["author", "me", "profile"] }); },
+    onError: () => toast.error("Failed to save profile"),
+  });
 
   const doSubmit = useMutation({
     mutationFn: (id: number) => submitPostForReview(id),
@@ -74,6 +100,63 @@ export default function AuthorDashboardPage() {
           </div>
         </div>
       )}
+
+      {/* Profile editor */}
+      <div className="mb-4">
+        <button
+          className="btn btn-outline-secondary btn-sm mb-3"
+          onClick={() => setShowProfile((v) => !v)}
+        >
+          <i className={`bi bi-chevron-${showProfile ? "up" : "down"} me-1`} />
+          Edit My Profile
+        </button>
+        {showProfile && (
+          <div className="card border-0 shadow-sm">
+            <div className="card-body">
+              <div className="row g-3">
+                <div className="col-12">
+                  <MediaUpload
+                    label="Avatar"
+                    value={profileForm.avatarUrl}
+                    onChange={(url) => setProfileForm((f) => ({ ...f, avatarUrl: url }))}
+                  />
+                </div>
+                <div className="col-12">
+                  <label className="form-label small">Bio</label>
+                  <textarea
+                    className="form-control"
+                    rows={3}
+                    value={profileForm.bio}
+                    onChange={(e) => setProfileForm((f) => ({ ...f, bio: e.target.value }))}
+                    placeholder="Tell readers about yourself…"
+                  />
+                </div>
+                <div className="col-md-4">
+                  <label className="form-label small">Website</label>
+                  <input className="form-control" value={profileForm.website} onChange={(e) => setProfileForm((f) => ({ ...f, website: e.target.value }))} placeholder="https://…" />
+                </div>
+                <div className="col-md-4">
+                  <label className="form-label small">Twitter handle</label>
+                  <input className="form-control" value={profileForm.twitter} onChange={(e) => setProfileForm((f) => ({ ...f, twitter: e.target.value }))} placeholder="@handle" />
+                </div>
+                <div className="col-md-4">
+                  <label className="form-label small">LinkedIn URL</label>
+                  <input className="form-control" value={profileForm.linkedin} onChange={(e) => setProfileForm((f) => ({ ...f, linkedin: e.target.value }))} placeholder="https://linkedin.com/in/…" />
+                </div>
+                <div className="col-12">
+                  <button
+                    className="btn btn-primary btn-sm"
+                    disabled={doSaveProfile.isPending}
+                    onClick={() => doSaveProfile.mutate()}
+                  >
+                    {doSaveProfile.isPending ? "Saving…" : "Save Profile"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Posts table */}
       <div className="d-flex align-items-center justify-content-between mb-3">

@@ -154,6 +154,18 @@ public class AdminUserService {
 
     @Transactional
     public AuthorResponse upsertAuthorProfile(Long userId, AuthorProfileRequest req, UserPrincipal admin) {
+        AuthorResponse result = upsertProfileInternal(userId, req);
+        audit(admin.id(), "PROFILE_UPDATE", "USER", userId, null);
+        return result;
+    }
+
+    /** Same as above but called by the author themselves — no admin principal required. */
+    @Transactional
+    public AuthorResponse upsertAuthorProfilePublic(Long userId, AuthorProfileRequest req) {
+        return upsertProfileInternal(userId, req);
+    }
+
+    private AuthorResponse upsertProfileInternal(Long userId, AuthorProfileRequest req) {
         User u = findUser(userId);
         AuthorProfile profile = authorProfiles.findByUserId(userId)
                 .orElseGet(() -> {
@@ -168,7 +180,6 @@ public class AdminUserService {
         profile.setLinkedin(req.linkedin());
         profile.setUpdatedAt(Instant.now());
         authorProfiles.save(profile);
-        audit(admin.id(), "PROFILE_UPDATE", "USER", userId, null);
         return toAuthorResponse(u);
     }
 
