@@ -1,10 +1,14 @@
 package com.example.blog.controller;
 
+import com.example.blog.dto.CommentResponse;
 import com.example.blog.dto.PageResponse;
+import com.example.blog.dto.PostResponse;
 import com.example.blog.dto.admin.*;
 import com.example.blog.security.UserPrincipal;
 import com.example.blog.service.AdminUserService;
 import com.example.blog.service.AuthorService;
+import com.example.blog.service.CommentService;
+import com.example.blog.service.PostService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -29,10 +33,15 @@ public class AdminUserController {
 
     private final AdminUserService adminService;
     private final AuthorService authorService;
+    private final PostService postService;
+    private final CommentService commentService;
 
-    public AdminUserController(AdminUserService adminService, AuthorService authorService) {
+    public AdminUserController(AdminUserService adminService, AuthorService authorService,
+                                PostService postService, CommentService commentService) {
         this.adminService = adminService;
         this.authorService = authorService;
+        this.postService = postService;
+        this.commentService = commentService;
     }
 
     // -----------------------------------------------------------------------
@@ -167,5 +176,53 @@ public class AdminUserController {
             @AuthenticationPrincipal UserPrincipal admin) {
         authorService.rejectRequest(id, body.getOrDefault("reason", ""), admin);
         return ResponseEntity.ok(Map.of("message", "Request rejected"));
+    }
+
+    // -----------------------------------------------------------------------
+    // Post moderation
+    // -----------------------------------------------------------------------
+
+    @Operation(summary = "List posts awaiting review")
+    @GetMapping("/posts/moderation")
+    public PageResponse<PostResponse> postsUnderReview(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return postService.listUnderReview(PageRequest.of(page, size, Sort.by("createdAt").ascending()));
+    }
+
+    @Operation(summary = "Approve a post (publish it)")
+    @PutMapping("/posts/{id}/approve")
+    public PostResponse approvePost(@PathVariable Long id,
+                                    @AuthenticationPrincipal UserPrincipal admin) {
+        return postService.approvePost(id, admin);
+    }
+
+    @Operation(summary = "Reject a post (return to author with feedback)")
+    @PutMapping("/posts/{id}/reject")
+    public PostResponse rejectPost(@PathVariable Long id,
+                                   @RequestBody Map<String, String> body,
+                                   @AuthenticationPrincipal UserPrincipal admin) {
+        return postService.rejectPost(id, body.getOrDefault("reason", ""), admin);
+    }
+
+    // -----------------------------------------------------------------------
+    // Comments moderation
+    // -----------------------------------------------------------------------
+
+    @Operation(summary = "List all comments across the site (paginated)")
+    @GetMapping("/comments")
+    public PageResponse<CommentResponse> listComments(
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return commentService.listAll(search, PageRequest.of(page, size, Sort.by("createdAt").descending()));
+    }
+
+    @Operation(summary = "Delete any comment (admin)")
+    @DeleteMapping("/comments/{id}")
+    public ResponseEntity<Void> deleteComment(@PathVariable Long id,
+                                              @AuthenticationPrincipal UserPrincipal admin) {
+        commentService.adminDelete(id);
+        return ResponseEntity.noContent().build();
     }
 }

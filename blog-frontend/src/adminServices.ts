@@ -1,5 +1,5 @@
 import api from "./api";
-import type { AdminStats, AdminUser, AuthorProfile, Page, Role } from "./types";
+import type { AdminStats, AdminUser, AuthorProfile, Category, Comment, Page, Post, Role, Tag } from "./types";
 
 // ---- Stats ----
 
@@ -147,3 +147,63 @@ export async function uploadMedia(file: File): Promise<MediaUploadResult> {
 export async function deleteMedia(id: number): Promise<void> {
   await api.delete(`/media/${id}`);
 }
+
+// ---- Post Moderation ----
+
+export async function fetchPostsUnderReview(page = 0, size = 20): Promise<Page<Post>> {
+  const { data } = await api.get<Page<Post>>("/admin/posts/moderation", { params: { page, size } });
+  return data;
+}
+
+export async function approvePost(id: number): Promise<Post> {
+  const { data } = await api.put<Post>(`/admin/posts/${id}/approve`);
+  return data;
+}
+
+export async function rejectPost(id: number, reason: string): Promise<Post> {
+  const { data } = await api.put<Post>(`/admin/posts/${id}/reject`, { reason });
+  return data;
+}
+
+export async function submitPostForReview(id: number): Promise<Post> {
+  const { data } = await api.put<Post>(`/posts/${id}/submit-for-review`);
+  return data;
+}
+
+// ---- Comments Moderation ----
+
+export async function fetchAdminComments(search?: string, page = 0, size = 20): Promise<Page<Comment>> {
+  const { data } = await api.get<Page<Comment>>("/admin/comments", {
+    params: { search: search || undefined, page, size },
+  });
+  return data;
+}
+
+export async function adminDeleteComment(id: number): Promise<void> {
+  await api.delete(`/admin/comments/${id}`);
+}
+
+// ---- Categories admin ----
+
+export async function createCategory(name: string, description?: string): Promise<Category> {
+  const { data } = await api.post<Category>("/categories", { name, description });
+  return data;
+}
+
+export async function updateCategory(id: number, name: string, description?: string): Promise<Category> {
+  const { data } = await api.put<Category>(`/categories/${id}`, { name, description });
+  return data;
+}
+
+export async function deleteCategory(id: number): Promise<void> {
+  await api.delete(`/categories/${id}`);
+}
+
+// ---- Tags admin ----
+
+export async function adminDeleteTag(id: number): Promise<void> {
+  await api.delete(`/tags/${id}`);
+}
+
+// re-export Tag so pages can import from one place
+export type { Tag };

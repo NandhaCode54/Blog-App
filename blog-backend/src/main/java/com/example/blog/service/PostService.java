@@ -31,13 +31,16 @@ public class PostService {
     private final UserRepository users;
     private final CategoryRepository categories;
     private final TagRepository tags;
+    private final NotificationService notifications;
 
     public PostService(PostRepository posts, UserRepository users,
-                       CategoryRepository categories, TagRepository tags) {
+                       CategoryRepository categories, TagRepository tags,
+                       NotificationService notifications) {
         this.posts = posts;
         this.users = users;
         this.categories = categories;
         this.tags = tags;
+        this.notifications = notifications;
     }
 
     /** Paged, filtered listing of PUBLISHED posts. */
@@ -88,6 +91,76 @@ public class PostService {
         Post post = findOr404(id);
         requireOwnerOrAdmin(post, principal);
         posts.delete(post);
+    }
+
+    // ---- Moderation -------------------------------------------------------
+
+    @Transactional
+    public PostResponse submitForReview(Long id, UserPrincipal principal) {
+        Post post = findOr404(id);
+        if (!post.getUser().getId().equals(principal.id())) {
+            throw new ForbiddenException("You can only submit your own posts for review");
+        }
+        if (post.getStatus() != PostStatus.DRAFT && post.getStatus() != PostStatus.REJECTED) {
+            throw new ForbiddenException("Only DRAFT or REJECTED posts can be submitted for review");
+        }
+        post.setStatus(PostStatus.UNDER_REVIEW);
+        post.setRejectReason(null);
+        post.setUpdatedAt(Instant.now());
+
+        // Notify admins
+        users.findAll().stream()
+                .filter(u -> u.getRole() == Role.ADMIN)
+                .forEach(a -> notifications.create(
+                        a.getId(), "POST_REVIEW",
+                        post.getUser().getName() + " submitted a post for review",
+                        post.getTitle(),
+                        "/admin/posts/moderation"));
+        return toResponse(posts.save(post));
+    }
+
+    @Transactional
+    public PostResponse approvePost(Long id, UserPrincipal admin) {
+        Post post = findOr404(id);
+        if (post.getStatus() != PostStatus.UNDER_REVIEW) {
+            throw new ForbiddenException("Post is not under review");
+        }
+        post.setStatus(PostStatus.PUBLISHED);
+        post.setReviewedBy(admin.id());
+        post.setReviewedAt(Instant.now());
+        post.setRejectReason(null);
+        post.setUpdatedAt(Instant.now());
+
+        notifications.create(post.getUser().getId(), "POST_APPROVED",
+                "Your post was published!",
+                post.getTitle(),
+                "/posts/" + post.getId());
+        return toResponse(posts.save(post));
+    }
+
+    @Transactional
+    public PostResponse rejectPost(Long id, String reason, UserPrincipal admin) {
+        Post post = findOr404(id);
+        if (post.getStatus() != PostStatus.UNDER_REVIEW) {
+            throw new ForbiddenException("Post is not under review");
+        }
+        post.setStatus(PostStatus.REJECTED);
+        post.setRejectReason(reason);
+        post.setReviewedBy(admin.id());
+        post.setReviewedAt(Instant.now());
+        post.setUpdatedAt(Instant.now());
+
+        notifications.create(post.getUser().getId(), "POST_REJECTED",
+                "Your post needs changes",
+                reason != null && !reason.isBlank() ? reason : "Review feedback pending.",
+                "/dashboard");
+        return toResponse(posts.save(post));
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<PostResponse> listUnderReview(Pageable pageable) {
+        Page<Post> page = posts.findByStatusOrderByCreatedAtDesc(PostStatus.UNDER_REVIEW, pageable);
+        return PageResponse.from(page, PostService::toResponse);
     }
 
     // ------------------------------------------------------------------ helpers
@@ -172,6 +245,7 @@ public class PostService {
                 p.getExcerpt(),
                 p.getContent(),
                 p.getStatus().name(),
+                p.getRejectReason(),
                 p.getReadingTime(),
                 author.getId(),
                 author.getName(),

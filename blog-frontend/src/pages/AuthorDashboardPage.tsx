@@ -1,13 +1,33 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
+import toast from "react-hot-toast";
 import { fetchMyStats, fetchMyPosts } from "../authorServices";
+import { submitPostForReview } from "../adminServices";
 import { useAuth } from "../context/AuthContext";
+import type { PostStatus } from "../types";
+
+const STATUS_BADGE: Record<PostStatus, string> = {
+  PUBLISHED:    "text-bg-success",
+  DRAFT:        "text-bg-secondary",
+  UNDER_REVIEW: "text-bg-info",
+  REJECTED:     "text-bg-danger",
+};
 
 export default function AuthorDashboardPage() {
   const { user } = useAuth();
+  const qc = useQueryClient();
   const [statusFilter, setStatusFilter] = useState("");
   const [page, setPage] = useState(0);
+
+  const doSubmit = useMutation({
+    mutationFn: (id: number) => submitPostForReview(id),
+    onSuccess: () => {
+      toast.success("Submitted for review!");
+      qc.invalidateQueries({ queryKey: ["author", "me", "posts"] });
+    },
+    onError: () => toast.error("Submit failed"),
+  });
 
   const { data: stats } = useQuery({
     queryKey: ["author", "me", "stats"],
@@ -61,13 +81,15 @@ export default function AuthorDashboardPage() {
         <div className="d-flex gap-2">
           <select
             className="form-select form-select-sm"
-            style={{ width: 150 }}
+            style={{ width: 160 }}
             value={statusFilter}
             onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}
           >
             <option value="">All</option>
             <option value="PUBLISHED">Published</option>
             <option value="DRAFT">Drafts</option>
+            <option value="UNDER_REVIEW">Under Review</option>
+            <option value="REJECTED">Rejected</option>
           </select>
           <Link to="/new" className="btn btn-sm btn-primary">
             + New Post
@@ -100,26 +122,39 @@ export default function AuthorDashboardPage() {
                       </Link>
                     </td>
                     <td>
-                      <span
-                        className={`badge text-bg-${
-                          post.status === "PUBLISHED" ? "success" : "secondary"
-                        }`}
-                      >
-                        {post.status}
+                      <span className={`badge ${STATUS_BADGE[post.status as PostStatus] ?? "text-bg-secondary"}`}>
+                        {post.status.replace("_", " ")}
                       </span>
+                      {post.status === "REJECTED" && post.rejectReason && (
+                        <div className="text-danger small mt-1" title={post.rejectReason}>
+                          <i className="bi bi-exclamation-circle me-1" />
+                          {post.rejectReason.substring(0, 60)}{post.rejectReason.length > 60 ? "…" : ""}
+                        </div>
+                      )}
                     </td>
                     <td className="text-muted small">{post.categoryName || "—"}</td>
                     <td className="text-muted small">{post.readingTime} min</td>
                     <td className="text-muted small text-nowrap">
                       {new Date(post.createdAt).toLocaleDateString()}
                     </td>
-                    <td>
-                      <Link
-                        to={`/edit/${post.id}`}
-                        className="btn btn-sm btn-outline-secondary"
-                      >
-                        Edit
-                      </Link>
+                    <td className="text-end">
+                      <div className="d-flex gap-1 justify-content-end">
+                        {(post.status === "DRAFT" || post.status === "REJECTED") && (
+                          <button
+                            className="btn btn-sm btn-outline-primary"
+                            disabled={doSubmit.isPending}
+                            title="Submit for admin review"
+                            onClick={() => {
+                              if (window.confirm("Submit this post for review?")) doSubmit.mutate(post.id);
+                            }}
+                          >
+                            <i className="bi bi-send" />
+                          </button>
+                        )}
+                        <Link to={`/edit/${post.id}`} className="btn btn-sm btn-outline-secondary">
+                          Edit
+                        </Link>
+                      </div>
                     </td>
                   </tr>
                 ))}

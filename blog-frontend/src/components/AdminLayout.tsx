@@ -8,7 +8,10 @@ const navItems = [
   { to: "/admin/users", label: "Users", icon: "bi-people" },
   { to: "/admin/authors", label: "Authors", icon: "bi-pen" },
   { to: "/admin/upgrade-requests", label: "Upgrade Requests", icon: "bi-person-check" },
+  { to: "/admin/posts/moderation", label: "Post Moderation", icon: "bi-file-earmark-check" },
+  { to: "/admin/comments", label: "Comments", icon: "bi-chat-left-dots" },
   { to: "/admin/categories", label: "Categories", icon: "bi-tag" },
+  { to: "/admin/tags", label: "Tags", icon: "bi-hash" },
   { to: "/admin/settings", label: "Settings", icon: "bi-gear" },
 ];
 

@@ -22,7 +22,7 @@ export interface Page<T> {
   last: boolean;
 }
 
-export type PostStatus = "DRAFT" | "PUBLISHED";
+export type PostStatus = "DRAFT" | "UNDER_REVIEW" | "PUBLISHED" | "REJECTED";
 
 export interface Post {
   id: number;
@@ -31,6 +31,7 @@ export interface Post {
   excerpt: string | null;
   content: string;
   status: PostStatus;
+  rejectReason: string | null;
   readingTime: number;
   authorId: number;
   authorName: string;

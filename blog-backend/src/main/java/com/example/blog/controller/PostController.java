@@ -81,6 +81,14 @@ public class PostController {
         return ResponseEntity.noContent().build();
     }
 
+    @Operation(summary = "Submit a draft post for admin review (owner only)")
+    @SecurityRequirement(name = "bearerAuth")
+    @PutMapping("/{id}/submit-for-review")
+    public PostResponse submitForReview(@PathVariable Long id,
+                                        @AuthenticationPrincipal UserPrincipal principal) {
+        return posts.submitForReview(id, principal);
+    }
+
     /** Parse "field,dir" (e.g. "createdAt,desc"); falls back to newest-first. */
     private Sort parseSort(String sort) {
         String[] parts = sort.split(",");

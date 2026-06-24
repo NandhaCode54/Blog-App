@@ -2,6 +2,7 @@ package com.example.blog.service;
 
 import com.example.blog.dto.CommentRequest;
 import com.example.blog.dto.CommentResponse;
+import com.example.blog.dto.PageResponse;
 import com.example.blog.entity.Comment;
 import com.example.blog.entity.Post;
 import com.example.blog.entity.Role;
@@ -12,6 +13,7 @@ import com.example.blog.repository.CommentRepository;
 import com.example.blog.repository.PostRepository;
 import com.example.blog.repository.UserRepository;
 import com.example.blog.security.UserPrincipal;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -77,6 +79,19 @@ public class CommentService {
         if (!isOwner && !isAdmin) {
             throw new ForbiddenException("You can only delete your own comments");
         }
+        comments.delete(c);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<CommentResponse> listAll(String search, Pageable pageable) {
+        String q = (search == null || search.isBlank()) ? null : search.trim();
+        return PageResponse.from(comments.findAllWithSearch(q, pageable), CommentService::toResponse);
+    }
+
+    @Transactional
+    public void adminDelete(Long commentId) {
+        Comment c = comments.findById(commentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Comment not found"));
         comments.delete(c);
     }
 

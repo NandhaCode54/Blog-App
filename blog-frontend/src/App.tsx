@@ -17,6 +17,10 @@ import AdminUsersPage from "./pages/admin/AdminUsersPage";
 import AdminAuthorsPage from "./pages/admin/AdminAuthorsPage";
 import AdminUpgradeRequestsPage from "./pages/admin/AdminUpgradeRequestsPage";
 import AdminSettingsPage from "./pages/admin/AdminSettingsPage";
+import AdminCategoriesPage from "./pages/admin/AdminCategoriesPage";
+import AdminTagsPage from "./pages/admin/AdminTagsPage";
+import AdminPostModerationPage from "./pages/admin/AdminPostModerationPage";
+import AdminCommentsPage from "./pages/admin/AdminCommentsPage";
 import { useAuth } from "./context/AuthContext";
 
 export default function App() {
@@ -55,6 +59,10 @@ export default function App() {
       <Route path="/admin/users" element={<AdminRoute><AdminUsersPage /></AdminRoute>} />
       <Route path="/admin/authors" element={<AdminRoute><AdminAuthorsPage /></AdminRoute>} />
       <Route path="/admin/upgrade-requests" element={<AdminRoute><AdminUpgradeRequestsPage /></AdminRoute>} />
+      <Route path="/admin/categories" element={<AdminRoute><AdminCategoriesPage /></AdminRoute>} />
+      <Route path="/admin/tags" element={<AdminRoute><AdminTagsPage /></AdminRoute>} />
+      <Route path="/admin/posts/moderation" element={<AdminRoute><AdminPostModerationPage /></AdminRoute>} />
+      <Route path="/admin/comments" element={<AdminRoute><AdminCommentsPage /></AdminRoute>} />
       <Route path="/admin/settings" element={<AdminRoute><AdminSettingsPage /></AdminRoute>} />
     </Routes>
   );

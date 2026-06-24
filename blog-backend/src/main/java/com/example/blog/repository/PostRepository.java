@@ -36,6 +36,8 @@ public interface PostRepository extends JpaRepository<Post, Long> {
                       @Param("tag") String tag,
                       Pageable pageable);
 
+    Page<Post> findByStatusOrderByCreatedAtDesc(PostStatus status, Pageable pageable);
+
     long countByUserId(Long userId);
     long countByStatus(PostStatus status);
     long countByUserIdAndStatus(Long userId, PostStatus status);

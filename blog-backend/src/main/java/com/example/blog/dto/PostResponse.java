@@ -10,6 +10,7 @@ public record PostResponse(
         String excerpt,
         String content,
         String status,
+        String rejectReason,
         int readingTime,
         Long authorId,
         String authorName,
